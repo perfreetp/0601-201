@@ -72,17 +72,32 @@ export interface BrandColor {
   color: string;
 }
 
+export type AssetType = 'image' | 'qr' | 'icon';
+
+export interface Asset {
+  id: string;
+  type: AssetType;
+  name: string;
+  data: string;
+  createdAt: number;
+  thumbnail: string;
+  meta?: Record<string, any>;
+}
+
 export interface Project {
   id: string;
   name: string;
   thumbnail: string;
   category: string;
   tags: string[];
+  description?: string;
+  author?: string;
   createdAt: number;
   updatedAt: number;
   canvasState: CanvasState;
   versions: { timestamp: number; state: CanvasState; thumbnail?: string }[];
   shareToken: string | null;
+  usedAssetIds: string[];
 }
 
 export interface CanvasState {

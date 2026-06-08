@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   Undo2, Redo2, ZoomIn, ZoomOut, Download, Save, Share2,
   Layers, Monitor, Smartphone, Square, Play, FolderOpen, Sparkles, RotateCcw,
-  X, Tag, FolderPlus, Check, Copy, Plus, RefreshCcw,
+  X, Tag, FolderPlus, Check, Copy, Plus, RefreshCcw, Image,
 } from 'lucide-react';
 import { useEditorStore } from '../../store/editorStore';
 import * as htmlToImage from 'html-to-image';
@@ -15,6 +15,7 @@ export const TopToolbar: React.FC = () => {
     setShowLibraryModal, setShowBatchModal, saveToLibrary,
     saveProjectAsNewVersion,
     generateShareLink, currentProject, categories,
+    saveDraft, setSaveDraft, setShowAssetsModal,
   } = useEditorStore();
 
   const [saving, setSaving] = useState(false);
@@ -30,9 +31,9 @@ export const TopToolbar: React.FC = () => {
 
   useEffect(() => {
     if (showSaveModal) {
-      setSaveName(currentProject?.name || `我的设计 ${new Date().toLocaleDateString()}`);
-      setSaveCategory(currentProject?.category || '其他');
-      setSaveTags(currentProject?.tags || []);
+      setSaveName(saveDraft.name || currentProject?.name || `我的设计 ${new Date().toLocaleDateString()}`);
+      setSaveCategory(saveDraft.category || currentProject?.category || '其他');
+      setSaveTags(saveDraft.tags?.length ? saveDraft.tags : (currentProject?.tags || []));
       setSaveMode(currentProject ? 'newversion' : 'new');
       const genThumb = async () => {
         const node = document.getElementById('export-canvas');
@@ -45,7 +46,7 @@ export const TopToolbar: React.FC = () => {
       };
       genThumb();
     }
-  }, [showSaveModal, currentProject]);
+  }, [showSaveModal, currentProject, saveDraft]);
 
   const handleExport = async (format: 'png' | 'jpeg', scale = 3) => {
     const node = document.getElementById('export-canvas');
@@ -66,10 +67,17 @@ export const TopToolbar: React.FC = () => {
 
   const handleConfirmSave = async () => {
     if (!saveName.trim()) { alert('请输入作品名称'); return; }
+    setSaveDraft({ name: saveName.trim(), category: saveCategory, tags: saveTags });
     if (saveMode === 'newversion' && currentProject) {
       saveProjectAsNewVersion(thumbnail);
     } else {
-      saveToLibrary(saveName.trim(), thumbnail, saveCategory, saveTags);
+      saveToLibrary(
+        saveName.trim(),
+        thumbnail,
+        saveCategory,
+        saveTags,
+        saveMode === 'new' || !currentProject ? 'new' : 'overwrite'
+      );
     }
     setShowSaveModal(false);
     alert('保存成功！');
@@ -161,6 +169,9 @@ export const TopToolbar: React.FC = () => {
           </button>
           <button onClick={() => setShowLibraryModal(true)} className="btn-ghost text-xs flex items-center gap-1.5">
             <FolderOpen size={14} /> 作品库
+          </button>
+          <button onClick={() => setShowAssetsModal(true)} className="btn-ghost text-xs flex items-center gap-1.5">
+            <Image size={14} /> 素材库
           </button>
           <div className="h-6 w-px bg-white/10 mx-1" />
           <button onClick={handleShare} disabled={saving} className="btn-ghost text-xs flex items-center gap-1.5">

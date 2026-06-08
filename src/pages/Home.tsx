@@ -6,17 +6,23 @@ import { Canvas } from '../components/canvas/Canvas';
 import { PreviewModal } from '../components/modals/PreviewModal';
 import { LibraryModal } from '../components/modals/LibraryModal';
 import { BatchModal } from '../components/modals/BatchModal';
+import { AssetsModal } from '../components/modals/AssetsModal';
 import { useEditorStore } from '../store/editorStore';
 import { useParams } from 'react-router-dom';
-import { ArrowLeft, Eye, Download, AlertTriangle, Home as HomeIcon, Copy, Calendar, Ruler } from 'lucide-react';
+import { ArrowLeft, Eye, Download, AlertTriangle, Home as HomeIcon, Copy, Calendar, Ruler, Sparkles, User, FileText } from 'lucide-react';
 import * as htmlToImage from 'html-to-image';
 import { downloadBlob, formatDate } from '../utils';
 
 export default function Home() {
-  const { undo, redo, readonly, loadSharedProject, canvasSize, currentProject } = useEditorStore();
+  const { undo, redo, readonly, loadSharedProject, canvasSize, currentProject, sharedProjectMeta } = useEditorStore();
   const { token } = useParams();
   const [shareError, setShareError] = useState(false);
   const [shareLoaded, setShareLoaded] = useState(false);
+
+  const shareTitle = sharedProjectMeta?.name || currentProject?.name || '分享作品';
+  const shareUpdatedAt = sharedProjectMeta?.updatedAt || currentProject?.updatedAt;
+  const shareAuthor = sharedProjectMeta?.author || currentProject?.author;
+  const shareDescription = sharedProjectMeta?.description || currentProject?.description;
 
   useEffect(() => {
     if (token) {
@@ -60,7 +66,7 @@ export default function Home() {
     try {
       const dataUrl = await htmlToImage.toPng(node, { pixelRatio: 3, quality: 1, cacheBust: true });
       const blob = await (await fetch(dataUrl)).blob();
-      downloadBlob(blob, `${(currentProject?.name || 'design').replace(/[^\w\u4e00-\u9fa5]/g, '_')}_${Date.now()}.png`);
+      downloadBlob(blob, `${shareTitle.replace(/[^\w\u4e00-\u9fa5]/g, '_')}_${Date.now()}.png`);
     } catch (e) {
       alert('导出失败');
     }
@@ -124,37 +130,15 @@ export default function Home() {
 
   if (readonly) {
     return (
-      <div className="h-screen w-screen flex flex-col overflow-hidden bg-ink-950">
-        <div className="h-16 flex items-center justify-between px-5 bg-ink-900/90 backdrop-blur-xl border-b border-white/5">
-          <div className="flex items-center gap-4 min-w-0">
-            <button
-              onClick={() => window.location.href = '/'}
-              className="btn-ghost text-xs flex items-center gap-1.5 flex-shrink-0"
-            >
-              <ArrowLeft size={14} /> 返回编辑器
-            </button>
-            <div className="h-6 w-px bg-white/10 flex-shrink-0" />
-            <div className="flex items-center gap-3 min-w-0">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-neon-purple to-neon-pink flex items-center justify-center shadow-glow-purple flex-shrink-0">
-                <Eye size={18} className="text-white" />
-              </div>
-              <div className="min-w-0">
-                <h1 className="text-sm font-semibold text-white font-display truncate">
-                  {currentProject?.name || '分享作品'}
-                </h1>
-                <div className="flex items-center gap-3 mt-0.5 text-[10px] text-white/40">
-                  {currentProject?.updatedAt && (
-                    <span className="flex items-center gap-1">
-                      <Calendar size={10} />
-                      {formatDate(currentProject.updatedAt)}
-                    </span>
-                  )}
-                  <span className="flex items-center gap-1">
-                    <Ruler size={10} />
-                    {canvasSize.width} × {canvasSize.height} · {canvasSize.aspect}
-                  </span>
-                </div>
-              </div>
+      <div className="min-h-screen w-screen flex flex-col bg-ink-950 overflow-x-hidden">
+        <header className="sticky top-0 z-40 h-16 flex items-center justify-between px-6 bg-ink-900/85 backdrop-blur-xl border-b border-white/5">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-neon-purple to-neon-pink flex items-center justify-center shadow-glow-purple">
+              <Sparkles size={16} className="text-white" />
+            </div>
+            <div>
+              <p className="text-[11px] text-white/40 font-mono tracking-wider">PODCASTDESIGNER</p>
+              <p className="text-xs text-white/60">作品发布页</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -165,18 +149,96 @@ export default function Home() {
             >
               <Copy size={14} /> 复制链接
             </button>
+            <button
+              onClick={() => window.location.href = '/'}
+              className="btn-ghost text-xs flex items-center gap-1.5"
+            >
+              <HomeIcon size={14} /> 返回首页
+            </button>
             <button onClick={handleShareExport} className="btn-primary text-xs flex items-center gap-1.5">
-              <Download size={14} /> 下载原图
+              <Download size={14} /> 下载 PNG
             </button>
           </div>
+        </header>
+
+        <div className="flex-1 flex flex-col items-center py-10 px-4 overflow-y-auto">
+          <div className="w-full max-w-4xl">
+            <div className="rounded-2xl overflow-hidden border border-white/10 shadow-2xl mx-auto" style={{ maxWidth: 720 }}>
+              <div className="relative bg-ink-900" style={{ padding: '8%' }}>
+                <div className="absolute top-3 left-3 text-[9px] text-white/30 font-mono tracking-widest">
+                  {canvasSize.width} × {canvasSize.height} · {canvasSize.aspect}
+                </div>
+                <Canvas />
+              </div>
+            </div>
+
+            <div className="mt-8 space-y-6">
+              <div>
+                <h1 className="text-2xl font-bold text-white font-display mb-2 leading-tight">
+                  {shareTitle}
+                </h1>
+                {shareDescription && (
+                  <p className="text-sm text-white/60 leading-relaxed whitespace-pre-line max-w-2xl">
+                    {shareDescription}
+                  </p>
+                )}
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="p-4 rounded-xl bg-white/5 border border-white/10">
+                  <div className="flex items-center gap-1.5 text-[10px] text-white/40 uppercase tracking-wider mb-1.5">
+                    <Ruler size={11} /> 尺寸
+                  </div>
+                  <p className="text-sm font-semibold text-white font-mono">
+                    {canvasSize.width} × {canvasSize.height}
+                  </p>
+                  <p className="text-[10px] text-white/40 mt-0.5">{canvasSize.aspect} · {canvasSize.name}</p>
+                </div>
+                <div className="p-4 rounded-xl bg-white/5 border border-white/10">
+                  <div className="flex items-center gap-1.5 text-[10px] text-white/40 uppercase tracking-wider mb-1.5">
+                    <Calendar size={11} /> 发布时间
+                  </div>
+                  <p className="text-sm font-semibold text-white">
+                    {shareUpdatedAt ? formatDate(shareUpdatedAt) : '—'}
+                  </p>
+                </div>
+                <div className="p-4 rounded-xl bg-white/5 border border-white/10">
+                  <div className="flex items-center gap-1.5 text-[10px] text-white/40 uppercase tracking-wider mb-1.5">
+                    <User size={11} /> 作者
+                  </div>
+                  <p className="text-sm font-semibold text-white truncate">
+                    {shareAuthor || 'PodcastDesigner 用户'}
+                  </p>
+                </div>
+                <div className="p-4 rounded-xl bg-white/5 border border-white/10">
+                  <div className="flex items-center gap-1.5 text-[10px] text-white/40 uppercase tracking-wider mb-1.5">
+                    <FileText size={11} /> 图层
+                  </div>
+                  <p className="text-sm font-semibold text-white">
+                    {useEditorStore.getState().elements.length} 个
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
-        <div className="flex-1 relative">
-          <Canvas />
-        </div>
-        <div className="h-10 flex items-center justify-center gap-2 bg-ink-900/60 border-t border-white/5 text-[10px] text-white/40">
-          只读预览 · 仅可查看和下载，无法编辑
-        </div>
-        <div className="grain-overlay" />
+
+        <footer className="border-t border-white/5 py-4 text-center text-[10px] text-white/30 flex items-center justify-center gap-3">
+          <span className="inline-flex items-center gap-1">
+            <Eye size={10} /> 只读预览
+          </span>
+          <span>·</span>
+          <span>使用 PodcastDesigner 制作</span>
+          <span>·</span>
+          <button
+            onClick={() => window.location.href = '/'}
+            className="text-neon-teal hover:text-neon-teal/80 hover:underline"
+          >
+            立即创建
+          </button>
+        </footer>
+
+        <div className="grain-overlay pointer-events-none" />
         <PreviewModal />
       </div>
     );
@@ -196,6 +258,7 @@ export default function Home() {
       <PreviewModal />
       <LibraryModal />
       <BatchModal />
+      <AssetsModal />
     </div>
   );
 }

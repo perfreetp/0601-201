@@ -1,4 +1,4 @@
-import type { CanvasElement, CanvasState, Project } from '../types';
+import type { Asset, CanvasElement, CanvasState, Project } from '../types';
 
 export const generateId = (): string => {
   return `el_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
@@ -96,6 +96,7 @@ export const getElementBoxStyle = (element: CanvasElement): React.CSSProperties 
 const STORAGE_KEY = 'podcast_design_projects';
 const BRAND_KEY = 'podcast_design_brand_colors';
 const HISTORY_KEY = 'podcast_design_history';
+const ASSETS_KEY = 'podcast_design_assets';
 
 export const saveProjects = (projects: Project[]): void => {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(projects));
@@ -147,6 +148,10 @@ export const encodeShareData = (data: {
   elements: CanvasElement[];
   background: string;
   canvasSize: { width: number; height: number; name: string; aspect: string };
+  projectName?: string;
+  projectDescription?: string;
+  author?: string;
+  updatedAt?: number;
 }): string => {
   try {
     const json = JSON.stringify(data);
@@ -161,6 +166,10 @@ export const decodeShareData = (token: string): {
   elements: CanvasElement[];
   background: string;
   canvasSize: { width: number; height: number; name: string; aspect: string };
+  projectName?: string;
+  projectDescription?: string;
+  author?: string;
+  updatedAt?: number;
 } | null => {
   try {
     let b64 = token.replace(/-/g, '+').replace(/_/g, '/');
@@ -169,5 +178,18 @@ export const decodeShareData = (token: string): {
     return JSON.parse(json);
   } catch {
     return null;
+  }
+};
+
+export const saveAssets = (assets: Asset[]): void => {
+  localStorage.setItem(ASSETS_KEY, JSON.stringify(assets));
+};
+
+export const loadAssets = (): Asset[] => {
+  try {
+    const data = localStorage.getItem(ASSETS_KEY);
+    return data ? JSON.parse(data) : [];
+  } catch {
+    return [];
   }
 };

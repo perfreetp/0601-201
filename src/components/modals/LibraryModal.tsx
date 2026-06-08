@@ -2,11 +2,18 @@ import React, { useState, useMemo } from 'react';
 import {
   X, Trash2, Clock, Share2, RotateCcw, Plus, FolderOpen, Search,
   ArrowUpDown, Tag, Filter, Eye, Check, ChevronDown, ChevronRight,
+  Image, QrCode, Grid3X3,
 } from 'lucide-react';
 import { useEditorStore } from '../../store/editorStore';
 import { formatDate, generateId } from '../../utils';
 import { CanvasElementRenderer } from '../canvas/CanvasElementRenderer';
-import type { Project } from '../../types';
+import type { Project, AssetType } from '../../types';
+
+const assetTypeLabel: Record<AssetType, string> = {
+  image: '照片',
+  qr: '二维码',
+  icon: '图标',
+};
 
 export const LibraryModal: React.FC = () => {
   const {
@@ -16,7 +23,7 @@ export const LibraryModal: React.FC = () => {
     librarySort, setLibrarySort,
     libraryFilterTag, setLibraryFilterTag,
     libraryFilterCategory, setLibraryFilterCategory,
-    categories,
+    categories, assets,
   } = useEditorStore();
 
   const [selectedId, setSelectedId] = useState(currentProject?.id || projects[0]?.id || '');
@@ -368,6 +375,45 @@ export const LibraryModal: React.FC = () => {
                       })}
                     </div>
                   </div>
+                </div>
+
+                <div>
+                  <h5 className="text-sm font-semibold text-white mb-2 flex items-center gap-1.5">
+                    <Image size={14} className="text-neon-purple" />
+                    使用的素材 <span className="text-white/40 font-normal text-xs">({selected.usedAssetIds?.length || 0})</span>
+                  </h5>
+                  {(() => {
+                    const used = assets.filter(a => selected.usedAssetIds?.includes(a.id));
+                    if (used.length === 0) {
+                      return (
+                        <div className="p-4 rounded-xl bg-white/5 border border-white/10 text-center">
+                          <p className="text-xs text-white/40">暂无已关联素材</p>
+                        </div>
+                      );
+                    }
+                    return (
+                      <div className="grid grid-cols-6 gap-2">
+                        {used.map(a => (
+                          <div
+                            key={a.id}
+                            className="aspect-square rounded-lg bg-white/5 border border-white/10 flex items-center justify-center overflow-hidden relative group"
+                            title={`${a.name} (${assetTypeLabel[a.type]})`}
+                          >
+                            {a.type === 'image' && a.thumbnail ? (
+                              <img src={a.thumbnail} alt="" className="w-full h-full object-cover" />
+                            ) : a.type === 'qr' ? (
+                              <QrCode size={22} className="text-white/70" />
+                            ) : (
+                              <Grid3X3 size={22} className="text-white/50" />
+                            )}
+                            <div className="absolute bottom-0 left-0 right-0 px-1 py-0.5 bg-black/70 text-[9px] text-white/80 truncate">
+                              {a.name}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 <div>
