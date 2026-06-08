@@ -9,7 +9,7 @@ export const Canvas: React.FC = () => {
   const canvasRef = useRef<HTMLDivElement>(null);
   const {
     elements, selectedId, selectElement, updateElement,
-    background, canvasSize, zoom, setZoom, pushHistory,
+    background, canvasSize, zoom, setZoom, pushHistory, readonly,
   } = useEditorStore();
 
   const [dragging, setDragging] = useState<{
@@ -36,7 +36,8 @@ export const Canvas: React.FC = () => {
   }, [zoom]);
 
   const handleMouseDown = (e: React.MouseEvent, element: CanvasElement, handle: HandleType) => {
-    if (element.locked && handle === 'move') return;
+    if (readonly) return;
+    if (element.locked) return;
     e.stopPropagation();
     selectElement(element.id);
     const { x, y } = getCanvasCoords(e.clientX, e.clientY);
@@ -145,7 +146,6 @@ export const Canvas: React.FC = () => {
           width: `${canvasSize.width * zoom}px`,
           height: `${canvasSize.height * zoom}px`,
           position: 'relative',
-          background: background,
           boxShadow: '0 50px 100px -20px rgba(0,0,0,0.5), 0 30px 60px -30px rgba(139,92,246,0.2)',
           borderRadius: '8px',
           overflow: 'hidden',
@@ -159,6 +159,7 @@ export const Canvas: React.FC = () => {
             position: 'relative',
             transform: `scale(${zoom})`,
             transformOrigin: 'top left',
+            background: background,
           }}
           id="export-canvas"
         >

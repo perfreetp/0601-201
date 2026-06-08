@@ -9,8 +9,8 @@ import type { TextStyles, ImageStyles, ShapeStyles, QrStyles, IconStyles } from 
 
 const SliderControl: React.FC<{
   label: string; value: number; min: number; max: number; step?: number;
-  onChange: (v: number) => void; unit?: string;
-}> = ({ label, value, min, max, step = 1, onChange, unit = '' }) => (
+  onChange: (v: number) => void; unit?: string; disabled?: boolean;
+}> = ({ label, value, min, max, step = 1, onChange, unit = '', disabled }) => (
   <div className="space-y-1.5">
     <div className="flex justify-between items-center">
       <span className="text-xs text-white/60">{label}</span>
@@ -19,7 +19,8 @@ const SliderControl: React.FC<{
     <input
       type="range" min={min} max={max} step={step} value={value}
       onChange={(e) => onChange(Number(e.target.value))}
-      className="slider-base"
+      disabled={disabled}
+      className="slider-base disabled:opacity-40"
     />
   </div>
 );
@@ -29,13 +30,14 @@ export const RightPanel: React.FC = () => {
     elements, selectedId, selectElement, updateElement, updateElementStyles,
     deleteElement, duplicateElement, toggleLock, bringForward, sendBackward,
     restoreDeletedElement, canvasSize, setCanvasSize, zoom, setZoom,
-    background, setBackground, pushHistory, deletedElements,
+    background, setBackground, pushHistory, deletedElements, readonly,
   } = useEditorStore();
 
   const el = elements.find(e => e.id === selectedId);
+  const disabled = readonly || el?.locked;
 
   const handleChange = (field: string, value: any) => {
-    if (!el) return;
+    if (!el || disabled) return;
     if (['x', 'y', 'width', 'height', 'rotation', 'opacity'].includes(field)) {
       updateElement(el.id, { [field]: value });
     } else {
@@ -159,7 +161,8 @@ export const RightPanel: React.FC = () => {
                 value={s.content} rows={3}
                 onChange={(e) => handleChange('content', e.target.value)}
                 onBlur={handleChangeBlur}
-                className="input-base text-sm resize-none"
+                disabled={disabled}
+                className="input-base text-sm resize-none disabled:opacity-50"
               />
             </div>
             <div>
@@ -167,7 +170,8 @@ export const RightPanel: React.FC = () => {
               <select
                 value={s.fontFamily}
                 onChange={(e) => { handleChange('fontFamily', e.target.value); handleChangeBlur(); }}
-                className="input-base text-sm"
+                disabled={disabled}
+                className="input-base text-sm disabled:opacity-50"
               >
                 {FONT_FAMILIES.map(f => (
                   <option key={f.name} value={f.name} style={{ fontFamily: f.name }}>{f.name}</option>
@@ -180,7 +184,8 @@ export const RightPanel: React.FC = () => {
                 <select
                   value={s.fontWeight}
                   onChange={(e) => { handleChange('fontWeight', Number(e.target.value)); handleChangeBlur(); }}
-                  className="input-base text-sm"
+                  disabled={disabled}
+                  className="input-base text-sm disabled:opacity-50"
                 >
                   {[300, 400, 500, 600, 700].map(w => <option key={w} value={w}>{w}</option>)}
                 </select>
@@ -191,12 +196,13 @@ export const RightPanel: React.FC = () => {
                   type="number" value={s.fontSize} min={8}
                   onChange={(e) => handleChange('fontSize', Number(e.target.value))}
                   onBlur={handleChangeBlur}
-                  className="input-base text-sm"
+                  disabled={disabled}
+                  className="input-base text-sm disabled:opacity-50"
                 />
               </div>
             </div>
-            <SliderControl label="行高" value={s.lineHeight * 100} min={80} max={300} unit="%" onChange={(v) => handleChange('lineHeight', v / 100)} />
-            <SliderControl label="字间距" value={s.letterSpacing} min={-20} max={50} unit="px" onChange={(v) => { handleChange('letterSpacing', v); handleChangeBlur(); }} />
+            <SliderControl label="行高" value={s.lineHeight * 100} min={80} max={300} unit="%" disabled={disabled} onChange={(v) => handleChange('lineHeight', v / 100)} />
+            <SliderControl label="字间距" value={s.letterSpacing} min={-20} max={50} unit="px" disabled={disabled} onChange={(v) => { handleChange('letterSpacing', v); handleChangeBlur(); }} />
             <div>
               <label className="text-xs text-white/60 block mb-1.5">文字颜色</label>
               <div className="flex gap-2 items-center">
@@ -204,13 +210,15 @@ export const RightPanel: React.FC = () => {
                   type="color" value={s.color}
                   onChange={(e) => handleChange('color', e.target.value)}
                   onBlur={handleChangeBlur}
-                  className="w-10 h-10 rounded-lg"
+                  disabled={disabled}
+                  className="w-10 h-10 rounded-lg disabled:opacity-50"
                 />
                 <input
                   type="text" value={s.color}
                   onChange={(e) => handleChange('color', e.target.value)}
                   onBlur={handleChangeBlur}
-                  className="input-base flex-1 text-xs font-mono"
+                  disabled={disabled}
+                  className="input-base flex-1 text-xs font-mono disabled:opacity-50"
                 />
               </div>
             </div>
@@ -221,7 +229,8 @@ export const RightPanel: React.FC = () => {
                   <button
                     key={align}
                     onClick={() => { handleChange('textAlign', align); handleChangeBlur(); }}
-                    className={`p-2 rounded-lg flex items-center justify-center transition-all ${
+                    disabled={disabled}
+                    className={`p-2 rounded-lg flex items-center justify-center transition-all disabled:opacity-40 ${
                       s.textAlign === align ? 'bg-neon-purple/30 border border-neon-purple/50 text-white' : 'bg-white/5 border border-white/10 text-white/60 hover:bg-white/10'
                     }`}
                   >
@@ -237,15 +246,16 @@ export const RightPanel: React.FC = () => {
         const s = el.styles as ImageStyles;
         return (
           <div className="space-y-4">
-            <SliderControl label="圆角" value={s.borderRadius} min={0} max={500} unit="px" onChange={(v) => { handleChange('borderRadius', v); handleChangeBlur(); }} />
-            <SliderControl label="阴影模糊" value={s.shadow?.blur || 0} min={0} max={100} unit="px" onChange={(v) => handleChange('shadow', { ...s.shadow, x: 0, y: 10, blur: v, spread: 0, color: 'rgba(0,0,0,0.5)' })} />
+            <SliderControl label="圆角" value={s.borderRadius} min={0} max={500} unit="px" disabled={disabled} onChange={(v) => { handleChange('borderRadius', v); handleChangeBlur(); }} />
+            <SliderControl label="阴影模糊" value={s.shadow?.blur || 0} min={0} max={100} unit="px" disabled={disabled} onChange={(v) => handleChange('shadow', { ...s.shadow, x: 0, y: 10, blur: v, spread: 0, color: 'rgba(0,0,0,0.5)' })} />
             <div>
               <label className="text-xs text-white/60 block mb-1.5">描边宽度</label>
               <input
                 type="range" min={0} max={40} value={s.border?.width || 0}
                 onChange={(e) => handleChange('border', { width: Number(e.target.value), color: s.border?.color || '#ffffff' })}
                 onMouseUp={handleChangeBlur}
-                className="slider-base"
+                disabled={disabled}
+                className="slider-base disabled:opacity-40"
               />
             </div>
             <div>
@@ -255,7 +265,8 @@ export const RightPanel: React.FC = () => {
                   type="color" value={s.border?.color || '#ffffff'}
                   onChange={(e) => handleChange('border', { ...s.border, color: e.target.value })}
                   onBlur={handleChangeBlur}
-                  className="w-10 h-10 rounded-lg"
+                  disabled={disabled}
+                  className="w-10 h-10 rounded-lg disabled:opacity-50"
                 />
               </div>
             </div>
@@ -272,18 +283,20 @@ export const RightPanel: React.FC = () => {
                 <input
                   type="color" value={s.fill.startsWith('#') ? s.fill : '#8b5cf6'}
                   onChange={(e) => { handleChange('fill', e.target.value); handleChange('gradient', undefined); handleChangeBlur(); }}
-                  className="w-10 h-10 rounded-lg"
+                  disabled={disabled}
+                  className="w-10 h-10 rounded-lg disabled:opacity-50"
                 />
                 <input
                   type="text" value={s.fill}
                   onChange={(e) => handleChange('fill', e.target.value)}
                   onBlur={handleChangeBlur}
-                  className="input-base flex-1 text-xs font-mono"
+                  disabled={disabled}
+                  className="input-base flex-1 text-xs font-mono disabled:opacity-50"
                 />
               </div>
             </div>
             {s.shape === 'rect' && (
-              <SliderControl label="圆角" value={s.borderRadius} min={0} max={400} unit="px" onChange={(v) => { handleChange('borderRadius', v); handleChangeBlur(); }} />
+              <SliderControl label="圆角" value={s.borderRadius} min={0} max={400} unit="px" disabled={disabled} onChange={(v) => { handleChange('borderRadius', v); handleChangeBlur(); }} />
             )}
             <div>
               <div className="flex items-center justify-between mb-1.5">
@@ -297,7 +310,8 @@ export const RightPanel: React.FC = () => {
                     }
                     handleChangeBlur();
                   }}
-                  className="text-xs px-2 py-1 rounded bg-white/5 text-white/70 hover:text-white hover:bg-white/10 flex items-center gap-1"
+                  disabled={disabled}
+                  className="text-xs px-2 py-1 rounded bg-white/5 text-white/70 hover:text-white hover:bg-white/10 flex items-center gap-1 disabled:opacity-40"
                 >
                   <Sparkles size={12} />
                   {s.gradient ? '移除' : '启用'}
@@ -306,20 +320,20 @@ export const RightPanel: React.FC = () => {
               {s.gradient && (
                 <div className="space-y-2 p-3 rounded-lg bg-white/5 border border-white/10">
                   <div className="flex gap-2">
-                    <input type="color" value={s.gradient.colors[0]} onChange={(e) => handleChange('gradient', { ...s.gradient!, colors: [e.target.value, s.gradient!.colors[1]] })} className="w-full h-8 rounded" />
-                    <input type="color" value={s.gradient.colors[1]} onChange={(e) => handleChange('gradient', { ...s.gradient!, colors: [s.gradient!.colors[0], e.target.value] })} className="w-full h-8 rounded" />
+                    <input type="color" value={s.gradient.colors[0]} disabled={disabled} onChange={(e) => handleChange('gradient', { ...s.gradient!, colors: [e.target.value, s.gradient!.colors[1]] })} className="w-full h-8 rounded disabled:opacity-50" />
+                    <input type="color" value={s.gradient.colors[1]} disabled={disabled} onChange={(e) => handleChange('gradient', { ...s.gradient!, colors: [s.gradient!.colors[0], e.target.value] })} className="w-full h-8 rounded disabled:opacity-50" />
                   </div>
-                  <select value={s.gradient.type} onChange={(e) => handleChange('gradient', { ...s.gradient!, type: e.target.value as any })} className="input-base text-xs">
+                  <select value={s.gradient.type} disabled={disabled} onChange={(e) => handleChange('gradient', { ...s.gradient!, type: e.target.value as any })} className="input-base text-xs disabled:opacity-50">
                     <option value="linear">线性渐变</option>
                     <option value="radial">径向渐变</option>
                   </select>
                   {s.gradient.type === 'linear' && (
-                    <SliderControl label="角度" value={s.gradient.angle} min={0} max={360} unit="°" onChange={(v) => handleChange('gradient', { ...s.gradient!, angle: v })} />
+                    <SliderControl label="角度" value={s.gradient.angle} min={0} max={360} unit="°" disabled={disabled} onChange={(v) => handleChange('gradient', { ...s.gradient!, angle: v })} />
                   )}
                 </div>
               )}
             </div>
-            <SliderControl label="描边宽度" value={s.border?.width || 0} min={0} max={40} unit="px" onChange={(v) => { handleChange('border', { width: v, color: s.border?.color || '#ffffff' }); handleChangeBlur(); }} />
+            <SliderControl label="描边宽度" value={s.border?.width || 0} min={0} max={40} unit="px" disabled={disabled} onChange={(v) => { handleChange('border', { width: v, color: s.border?.color || '#ffffff' }); handleChangeBlur(); }} />
           </div>
         );
       }
@@ -333,7 +347,8 @@ export const RightPanel: React.FC = () => {
                 type="text" value={s.value}
                 onChange={(e) => handleChange('value', e.target.value)}
                 onBlur={handleChangeBlur}
-                className="input-base text-sm"
+                disabled={disabled}
+                className="input-base text-sm disabled:opacity-50"
               />
             </div>
             <div>
@@ -342,7 +357,8 @@ export const RightPanel: React.FC = () => {
                 type="color" value={s.fgColor}
                 onChange={(e) => handleChange('fgColor', e.target.value)}
                 onBlur={handleChangeBlur}
-                className="w-full h-10 rounded-lg"
+                disabled={disabled}
+                className="w-full h-10 rounded-lg disabled:opacity-50"
               />
             </div>
             <div>
@@ -351,7 +367,8 @@ export const RightPanel: React.FC = () => {
                 type="color" value={s.bgColor}
                 onChange={(e) => handleChange('bgColor', e.target.value)}
                 onBlur={handleChangeBlur}
-                className="w-full h-10 rounded-lg"
+                disabled={disabled}
+                className="w-full h-10 rounded-lg disabled:opacity-50"
               />
             </div>
           </div>
@@ -368,11 +385,12 @@ export const RightPanel: React.FC = () => {
                   type="color" value={s.color}
                   onChange={(e) => handleChange('color', e.target.value)}
                   onBlur={handleChangeBlur}
-                  className="w-10 h-10 rounded-lg"
+                  disabled={disabled}
+                  className="w-10 h-10 rounded-lg disabled:opacity-50"
                 />
               </div>
             </div>
-            <SliderControl label="线条粗细" value={s.strokeWidth} min={1} max={6} step={0.5} onChange={(v) => { handleChange('strokeWidth', v); handleChangeBlur(); }} />
+            <SliderControl label="线条粗细" value={s.strokeWidth} min={1} max={6} step={0.5} disabled={disabled} onChange={(v) => { handleChange('strokeWidth', v); handleChangeBlur(); }} />
           </div>
         );
       }
@@ -384,44 +402,46 @@ export const RightPanel: React.FC = () => {
   return (
     <div className="w-[300px] h-full bg-ink-900/80 backdrop-blur-xl border-l border-white/5 flex flex-col">
       <div className="px-4 py-3 border-b border-white/5 flex items-center justify-between">
-        <h2 className="text-sm font-semibold text-white font-display">属性</h2>
+        <h2 className="text-sm font-semibold text-white font-display">
+          属性 {el?.locked && <span className="text-neon-amber text-[10px] ml-2">(已锁定)</span>}
+        </h2>
         <div className="flex gap-1">
-          <button onClick={() => toggleLock(el.id)} className="btn-icon p-1.5" title={el.locked ? '解锁' : '锁定'}>
+          <button onClick={() => !readonly && toggleLock(el.id)} className="btn-icon p-1.5" title={el.locked ? '解锁' : '锁定'} disabled={readonly}>
             {el.locked ? <Lock size={14} className="text-neon-amber" /> : <Unlock size={14} />}
           </button>
-          <button onClick={() => duplicateElement(el.id)} className="btn-icon p-1.5" title="复制"><Copy size={14} /></button>
-          <button onClick={() => deleteElement(el.id)} className="btn-icon p-1.5 hover:text-red-400" title="删除"><Trash2 size={14} /></button>
+          <button onClick={() => duplicateElement(el.id)} disabled={disabled} className="btn-icon p-1.5 disabled:opacity-30 disabled:cursor-not-allowed" title="复制"><Copy size={14} /></button>
+          <button onClick={() => deleteElement(el.id)} disabled={disabled} className="btn-icon p-1.5 hover:text-red-400 disabled:opacity-30 disabled:cursor-not-allowed" title="删除"><Trash2 size={14} /></button>
         </div>
       </div>
       <div className="flex-1 overflow-y-auto p-4 space-y-5">
         <div className="grid grid-cols-2 gap-2">
-          <button onClick={() => bringForward(el.id)} className="flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-xs text-white/70 border border-white/10">
+          <button onClick={() => bringForward(el.id)} disabled={disabled} className="flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-xs text-white/70 border border-white/10 disabled:opacity-30 disabled:cursor-not-allowed">
             <ChevronUp size={12} /> 上移
           </button>
-          <button onClick={() => sendBackward(el.id)} className="flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-xs text-white/70 border border-white/10">
+          <button onClick={() => sendBackward(el.id)} disabled={disabled} className="flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-xs text-white/70 border border-white/10 disabled:opacity-30 disabled:cursor-not-allowed">
             <ChevronDown size={12} /> 下移
           </button>
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="text-xs text-white/60 block mb-1.5">X 位置</label>
-            <input type="number" value={Math.round(el.x)} onChange={(e) => updateElement(el.id, { x: Number(e.target.value) })} onBlur={handleChangeBlur} className="input-base text-sm" />
+            <input type="number" value={Math.round(el.x)} disabled={disabled} onChange={(e) => updateElement(el.id, { x: Number(e.target.value) })} onBlur={handleChangeBlur} className="input-base text-sm disabled:opacity-50" />
           </div>
           <div>
             <label className="text-xs text-white/60 block mb-1.5">Y 位置</label>
-            <input type="number" value={Math.round(el.y)} onChange={(e) => updateElement(el.id, { y: Number(e.target.value) })} onBlur={handleChangeBlur} className="input-base text-sm" />
+            <input type="number" value={Math.round(el.y)} disabled={disabled} onChange={(e) => updateElement(el.id, { y: Number(e.target.value) })} onBlur={handleChangeBlur} className="input-base text-sm disabled:opacity-50" />
           </div>
           <div>
             <label className="text-xs text-white/60 block mb-1.5">宽度</label>
-            <input type="number" value={Math.round(el.width)} min={20} onChange={(e) => updateElement(el.id, { width: Math.max(20, Number(e.target.value)) })} onBlur={handleChangeBlur} className="input-base text-sm" />
+            <input type="number" value={Math.round(el.width)} min={20} disabled={disabled} onChange={(e) => updateElement(el.id, { width: Math.max(20, Number(e.target.value)) })} onBlur={handleChangeBlur} className="input-base text-sm disabled:opacity-50" />
           </div>
           <div>
             <label className="text-xs text-white/60 block mb-1.5">高度</label>
-            <input type="number" value={Math.round(el.height)} min={20} onChange={(e) => updateElement(el.id, { height: Math.max(20, Number(e.target.value)) })} onBlur={handleChangeBlur} className="input-base text-sm" />
+            <input type="number" value={Math.round(el.height)} min={20} disabled={disabled} onChange={(e) => updateElement(el.id, { height: Math.max(20, Number(e.target.value)) })} onBlur={handleChangeBlur} className="input-base text-sm disabled:opacity-50" />
           </div>
         </div>
-        <SliderControl label="旋转角度" value={el.rotation} min={-180} max={180} unit="°" onChange={(v) => updateElement(el.id, { rotation: v })} />
-        <SliderControl label="不透明度" value={el.opacity * 100} min={0} max={100} unit="%" onChange={(v) => { updateElement(el.id, { opacity: v / 100 }); handleChangeBlur(); }} />
+        <SliderControl label="旋转角度" value={el.rotation} min={-180} max={180} unit="°" disabled={disabled} onChange={(v) => updateElement(el.id, { rotation: v })} />
+        <SliderControl label="不透明度" value={el.opacity * 100} min={0} max={100} unit="%" disabled={disabled} onChange={(v) => { updateElement(el.id, { opacity: v / 100 }); handleChangeBlur(); }} />
         <div className="h-px bg-white/10 my-2" />
         {renderTypeSpecific()}
       </div>

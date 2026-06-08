@@ -24,6 +24,7 @@ const getGradientBg = (gradient?: { type: 'linear' | 'radial'; colors: string[];
 
 const TextElement: React.FC<{ element: CanvasElementType; styles: TextStyles }> = ({ element, styles }) => {
   const updateStyles = useEditorStore(s => s.updateElementStyles);
+  const readonly = useEditorStore(s => s.readonly);
   return (
     <div
       style={{
@@ -42,11 +43,13 @@ const TextElement: React.FC<{ element: CanvasElementType; styles: TextStyles }> 
         wordBreak: 'break-word',
         whiteSpace: 'pre-wrap',
         overflow: 'hidden',
+        userSelect: readonly || element.locked ? 'none' : 'text',
         textShadow: styles.textShadow
           ? `${styles.textShadow.x}px ${styles.textShadow.y}px ${styles.textShadow.blur}px ${styles.textShadow.color}`
           : undefined,
       }}
       onDoubleClick={(e) => {
+        if (readonly || element.locked) return;
         e.stopPropagation();
         const newContent = prompt('编辑文本内容：', styles.content);
         if (newContent !== null) {

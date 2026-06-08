@@ -14,6 +14,7 @@ interface EditorState extends CanvasState {
   showLibraryModal: boolean;
   showBatchModal: boolean;
   currentProject: Project | null;
+  readonly: boolean;
 
   setActivePanel: (panel: EditorState['activePanel']) => void;
   selectElement: (id: string | null) => void;
@@ -41,6 +42,7 @@ interface EditorState extends CanvasState {
   createVersion: () => void;
   restoreVersion: (versionIndex: number) => void;
   generateShareLink: () => string;
+  loadSharedProject: (token: string) => Project | null;
   setBatchTitles: (titles: string[]) => void;
   setShowPreviewModal: (show: boolean) => void;
   setShowLibraryModal: (show: boolean) => void;
@@ -123,12 +125,14 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   showLibraryModal: false,
   showBatchModal: false,
   currentProject: null,
+  readonly: false,
 
   setActivePanel: (panel) => set({ activePanel: panel }),
 
   selectElement: (id) => set({ selectedId: id }),
 
   addElement: (element) => {
+    if (get().readonly) return;
     const { elements } = get();
     const newElement: CanvasElement = {
       id: generateId(),
@@ -143,7 +147,10 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   },
 
   updateElement: (id, updates) => {
+    if (get().readonly) return;
     const { elements } = get();
+    const el = elements.find(e => e.id === id);
+    if (el?.locked) return;
     set({
       elements: elements.map(el =>
         el.id === id ? { ...el, ...updates } : el
@@ -152,7 +159,10 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   },
 
   updateElementStyles: (id, styleUpdates) => {
+    if (get().readonly) return;
     const { elements } = get();
+    const el = elements.find(e => e.id === id);
+    if (el?.locked) return;
     set({
       elements: elements.map(el =>
         el.id === id ? { ...el, styles: { ...el.styles, ...styleUpdates } } : el
@@ -161,9 +171,10 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   },
 
   deleteElement: (id) => {
+    if (get().readonly) return;
     const { elements, deletedElements } = get();
     const element = elements.find(e => e.id === id);
-    if (!element) return;
+    if (!element || element.locked) return;
     set({
       elements: elements.filter(e => e.id !== id),
       deletedElements: [...deletedElements, { ...element, deleted: true }],
@@ -173,6 +184,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   },
 
   restoreDeletedElement: () => {
+    if (get().readonly) return;
     const { elements, deletedElements } = get();
     if (deletedElements.length === 0) return;
     const last = deletedElements[deletedElements.length - 1];
@@ -184,9 +196,10 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   },
 
   duplicateElement: (id) => {
+    if (get().readonly) return;
     const { elements } = get();
     const element = elements.find(e => e.id === id);
-    if (!element) return;
+    if (!element || element.locked) return;
     const maxZ = Math.max(...elements.map(e => e.zIndex), 0);
     const newEl: CanvasElement = {
       ...cloneDeep(element),
@@ -201,6 +214,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   },
 
   toggleLock: (id) => {
+    if (get().readonly) return;
     const { elements } = get();
     set({
       elements: elements.map(el =>
@@ -210,6 +224,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   },
 
   bringForward: (id) => {
+    if (get().readonly) return;
     const { elements } = get();
     const sorted = [...elements].sort((a, b) => a.zIndex - b.zIndex);
     const idx = sorted.findIndex(e => e.id === id);
@@ -223,6 +238,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   },
 
   sendBackward: (id) => {
+    if (get().readonly) return;
     const { elements } = get();
     const sorted = [...elements].sort((a, b) => a.zIndex - b.zIndex);
     const idx = sorted.findIndex(e => e.id === id);
@@ -235,13 +251,14 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     }
   },
 
-  setBackground: (bg) => set({ background: bg }),
+  setBackground: (bg) => { if (!get().readonly) set({ background: bg }); },
 
-  setCanvasSize: (size) => set({ canvasSize: size }),
+  setCanvasSize: (size) => { if (!get().readonly) set({ canvasSize: size }); },
 
   setZoom: (zoom) => set({ zoom: Math.max(0.05, Math.min(2, zoom)) }),
 
   applyTemplate: (templateId) => {
+    if (get().readonly) return;
     const template = TEMPLATES.find(t => t.id === templateId);
     if (!template) return;
     const elements = template.elements.map(e => ({
@@ -258,6 +275,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   },
 
   undo: () => {
+    if (get().readonly) return;
     const { history, historyIndex } = get();
     if (historyIndex > 0) {
       const newIdx = historyIndex - 1;
@@ -267,6 +285,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   },
 
   redo: () => {
+    if (get().readonly) return;
     const { history, historyIndex } = get();
     if (historyIndex < history.length - 1) {
       const newIdx = historyIndex + 1;
@@ -276,6 +295,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   },
 
   pushHistory: () => {
+    if (get().readonly) return;
     const { history, historyIndex, elements, background, canvasSize, zoom, deletedElements } = get();
     const newHistory = history.slice(0, historyIndex + 1);
     newHistory.push(cloneDeep({ elements, background, canvasSize, zoom, deletedElements, selectedId: null }));
@@ -284,6 +304,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   },
 
   addBrandColor: (color) => {
+    if (get().readonly) return;
     const newColor: BrandColor = { ...color, id: generateId() };
     const colors = [...get().brandColors, newColor];
     set({ brandColors: colors });
@@ -291,12 +312,14 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   },
 
   removeBrandColor: (id) => {
+    if (get().readonly) return;
     const colors = get().brandColors.filter(c => c.id !== id);
     set({ brandColors: colors });
     saveBrandColors(colors);
   },
 
   saveToLibrary: (name, thumbnail) => {
+    if (get().readonly) return;
     const { elements, background, canvasSize, zoom, deletedElements, projects, currentProject } = get();
     const state = cloneDeep({ elements, background, canvasSize, zoom, deletedElements, selectedId: null });
     const now = Date.now();
@@ -367,6 +390,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   },
 
   generateShareLink: () => {
+    if (get().readonly) return '';
     const { currentProject, projects } = get();
     if (!currentProject) return '';
     const token = Math.random().toString(36).slice(2, 15);
@@ -375,6 +399,16 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     set({ currentProject: updated, projects: newProjects });
     saveProjects(newProjects);
     return `${window.location.origin}/share/${token}`;
+  },
+
+  loadSharedProject: (token) => {
+    const { projects } = get();
+    const project = projects.find(p => p.shareToken === token);
+    if (project) {
+      const state = cloneDeep(project.canvasState);
+      set({ ...state, currentProject: project, selectedId: null, readonly: true });
+    }
+    return project || null;
   },
 
   setBatchTitles: (titles) => set({ batchTitles: titles }),

@@ -23,8 +23,8 @@ export const TopToolbar: React.FC = () => {
     try {
       const dataUrl = await htmlToImage.toPng(node, {
         pixelRatio: scale,
-        backgroundColor: background.startsWith('#') ? background : undefined,
         quality: 1,
+        cacheBust: true,
       });
       const blob = await (await fetch(dataUrl)).blob();
       downloadBlob(blob, `design_${Date.now()}.${format}`);
@@ -40,8 +40,10 @@ export const TopToolbar: React.FC = () => {
     let thumbnail = '';
     if (node) {
       try {
-        thumbnail = await htmlToImage.toPng(node, { pixelRatio: 0.5, quality: 0.7 });
-      } catch {}
+        thumbnail = await htmlToImage.toPng(node, { pixelRatio: 0.5, quality: 0.7, cacheBust: true });
+      } catch (e) {
+        console.error('缩略图生成失败', e);
+      }
     }
     const name = prompt('作品名称：', currentProject?.name || `我的设计 ${new Date().toLocaleDateString()}`);
     if (name) {

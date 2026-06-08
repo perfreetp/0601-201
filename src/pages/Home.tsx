@@ -7,11 +7,26 @@ import { PreviewModal } from '../components/modals/PreviewModal';
 import { LibraryModal } from '../components/modals/LibraryModal';
 import { BatchModal } from '../components/modals/BatchModal';
 import { useEditorStore } from '../store/editorStore';
+import { useParams } from 'react-router-dom';
+import { ArrowLeft, Eye, Download } from 'lucide-react';
+import * as htmlToImage from 'html-to-image';
+import { downloadBlob } from '../utils';
 
 export default function Home() {
-  const { undo, redo } = useEditorStore();
+  const { undo, redo, readonly, loadSharedProject, background, canvasSize } = useEditorStore();
+  const { token } = useParams();
 
   useEffect(() => {
+    if (token) {
+      const project = loadSharedProject(token);
+      if (!project) {
+        setTimeout(() => alert('分享链接无效或已过期'), 100);
+      }
+    }
+  }, [token, loadSharedProject]);
+
+  useEffect(() => {
+    if (readonly) return;
     const handleKey = (e: KeyboardEvent) => {
       if (e.ctrlKey || e.metaKey) {
         if (e.key === 'z' && !e.shiftKey) {
@@ -32,7 +47,56 @@ export default function Home() {
     };
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
-  }, [undo, redo]);
+  }, [undo, redo, readonly]);
+
+  const handleShareExport = async () => {
+    const node = document.getElementById('export-canvas');
+    if (!node) return;
+    try {
+      const dataUrl = await htmlToImage.toPng(node, { pixelRatio: 3, quality: 1, cacheBust: true });
+      const blob = await (await fetch(dataUrl)).blob();
+      downloadBlob(blob, `shared_design_${Date.now()}.png`);
+    } catch (e) {
+      alert('导出失败');
+    }
+  };
+
+  if (readonly) {
+    return (
+      <div className="h-screen w-screen flex flex-col overflow-hidden bg-ink-950">
+        <div className="h-14 flex items-center justify-between px-4 bg-ink-900/90 backdrop-blur-xl border-b border-white/5">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => window.location.href = '/'}
+              className="btn-ghost text-xs flex items-center gap-1.5"
+            >
+              <ArrowLeft size={14} /> 返回编辑器
+            </button>
+            <div className="h-6 w-px bg-white/10" />
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-neon-purple to-neon-pink flex items-center justify-center shadow-glow-purple">
+                <Eye size={16} className="text-white" />
+              </div>
+              <span className="font-display font-bold text-sm text-white tracking-wide">只读预览</span>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="text-xs text-white/50 font-mono mr-2">
+              {canvasSize.width} × {canvasSize.height}
+            </div>
+            <button onClick={handleShareExport} className="btn-primary text-xs flex items-center gap-1.5">
+              <Download size={14} /> 导出高清图
+            </button>
+          </div>
+        </div>
+        <div className="flex-1 relative">
+          <Canvas />
+        </div>
+        <div className="grain-overlay" />
+        <PreviewModal />
+      </div>
+    );
+  }
 
   return (
     <div className="h-screen w-screen flex flex-col overflow-hidden bg-ink-950">

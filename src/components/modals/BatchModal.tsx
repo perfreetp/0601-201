@@ -4,7 +4,44 @@ import { useEditorStore } from '../../store/editorStore';
 import { CanvasElementRenderer } from '../canvas/CanvasElementRenderer';
 import * as htmlToImage from 'html-to-image';
 import { downloadBlob } from '../../utils';
-import type { TextStyles } from '../../types';
+import type { TextStyles, CanvasElement as CanvasElementType } from '../../types';
+import { createRoot } from 'react-dom/client';
+
+const renderBatchCanvas = (
+  title: string,
+  targetId: string,
+  elements: CanvasElementType[],
+  background: string,
+  canvasSize: { width: number; height: number }
+): HTMLElement => {
+  const container = document.createElement('div');
+  container.style.position = 'fixed';
+  container.style.left = '-99999px';
+  container.style.top = '-99999px';
+  container.style.width = `${canvasSize.width}px`;
+  container.style.height = `${canvasSize.height}px`;
+  container.style.background = background;
+  container.style.overflow = 'hidden';
+  document.body.appendChild(container);
+
+  const snapElements = elements.map(e => ({
+    ...e,
+    styles: e.id === targetId && e.type === 'text'
+      ? { ...e.styles, content: title } as TextStyles
+      : e.styles,
+  }));
+
+  const root = createRoot(container);
+  root.render(
+    <div style={{ width: `${canvasSize.width}px`, height: `${canvasSize.height}px`, position: 'relative' }}>
+      {snapElements.map(el => (
+        <CanvasElementRenderer key={el.id} element={el} />
+      ))}
+    </div>
+  );
+
+  return container;
+};
 
 export const BatchModal: React.FC = () => {
   const {
@@ -21,82 +58,30 @@ export const BatchModal: React.FC = () => {
   const handleExportAll = async () => {
     if (!targetTextEl) { alert('请先添加一个文本元素'); return; }
     setExporting(true);
-    const container = document.createElement('div');
-    container.style.position = 'fixed';
-    container.style.left = '-9999px';
-    container.style.top = '-9999px';
-    document.body.appendChild(container);
 
     try {
       for (let i = 0; i < batchTitles.length; i++) {
         const title = batchTitles[i];
-        const node = document.createElement('div');
-        node.style.width = `${canvasSize.width}px`;
-        node.style.height = `${canvasSize.height}px`;
-        node.style.position = 'relative';
-        node.style.background = background;
-        node.style.overflow = 'hidden';
-        container.appendChild(node);
+        const node = renderBatchCanvas(title, targetTextEl.id, elements, background, canvasSize);
 
-        const snapElements = elements.map(e => ({
-          ...e,
-          styles: e.id === targetTextEl.id
-            ? { ...e.styles, content: title } as any
-            : e.styles,
-        }));
+        await new Promise(r => setTimeout(r, 200));
 
-        for (const el of snapElements) {
-          const inner = document.createElement('div');
-          inner.style.position = 'absolute';
-          inner.style.left = `${el.x}px`;
-          inner.style.top = `${el.y}px`;
-          inner.style.width = `${el.width}px`;
-          inner.style.height = `${el.height}px`;
-          inner.style.transform = `rotate(${el.rotation}deg)`;
-          inner.style.opacity = String(el.opacity);
-          inner.style.zIndex = String(el.zIndex);
-          if (el.type === 'text') {
-            const s = el.styles as TextStyles;
-            inner.style.fontFamily = s.fontFamily;
-            inner.style.fontSize = `${s.fontSize}px`;
-            inner.style.fontWeight = String(s.fontWeight);
-            inner.style.lineHeight = String(s.lineHeight);
-            inner.style.letterSpacing = `${s.letterSpacing}px`;
-            inner.style.color = s.color;
-            inner.style.textAlign = s.textAlign;
-            inner.style.display = 'flex';
-            inner.style.alignItems = 'center';
-            inner.style.justifyContent = s.textAlign === 'center' ? 'center' : s.textAlign === 'right' ? 'flex-end' : 'flex-start';
-            inner.style.wordBreak = 'break-word';
-            inner.style.whiteSpace = 'pre-wrap';
-            inner.textContent = s.content;
-          } else if (el.type === 'shape') {
-            const s: any = el.styles;
-            if (s.gradient) {
-              inner.style.background = s.gradient.type === 'linear'
-                ? `linear-gradient(${s.gradient.angle}deg, ${s.gradient.colors.join(', ')})`
-                : `radial-gradient(circle, ${s.gradient.colors.join(', ')})`;
-            } else {
-              inner.style.backgroundColor = s.fill;
-            }
-            if (s.shape === 'circle') inner.style.borderRadius = '50%';
-            else if (s.shape === 'rect') inner.style.borderRadius = `${s.borderRadius}px`;
-          }
-          node.appendChild(inner);
-        }
-
-        const dataUrl = await htmlToImage.toPng(node, { pixelRatio: 2, quality: 1 });
+        const dataUrl = await htmlToImage.toPng(node, {
+          pixelRatio: 2,
+          quality: 1,
+          cacheBust: true,
+        });
         const blob = await (await fetch(dataUrl)).blob();
         downloadBlob(blob, `${title.replace(/[^\w\u4e00-\u9fa5]/g, '_')}.png`);
+
+        document.body.removeChild(node);
         await new Promise(r => setTimeout(r, 300));
-        container.innerHTML = '';
       }
       alert(`已导出 ${batchTitles.length} 张图片！`);
     } catch (e) {
       console.error(e);
       alert('导出失败');
     } finally {
-      document.body.removeChild(container);
       setExporting(false);
     }
   };
