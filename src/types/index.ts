@@ -76,10 +76,12 @@ export interface Project {
   id: string;
   name: string;
   thumbnail: string;
+  category: string;
+  tags: string[];
   createdAt: number;
   updatedAt: number;
   canvasState: CanvasState;
-  versions: { timestamp: number; state: CanvasState }[];
+  versions: { timestamp: number; state: CanvasState; thumbnail?: string }[];
   shareToken: string | null;
 }
 

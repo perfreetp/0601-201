@@ -150,7 +150,8 @@ export const encodeShareData = (data: {
 }): string => {
   try {
     const json = JSON.stringify(data);
-    return btoa(unescape(encodeURIComponent(json)));
+    const b64 = btoa(unescape(encodeURIComponent(json)));
+    return b64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
   } catch {
     return '';
   }
@@ -162,7 +163,9 @@ export const decodeShareData = (token: string): {
   canvasSize: { width: number; height: number; name: string; aspect: string };
 } | null => {
   try {
-    const json = decodeURIComponent(escape(atob(token)));
+    let b64 = token.replace(/-/g, '+').replace(/_/g, '/');
+    while (b64.length % 4) b64 += '=';
+    const json = decodeURIComponent(escape(atob(b64)));
     return JSON.parse(json);
   } catch {
     return null;

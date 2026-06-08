@@ -15,6 +15,11 @@ interface EditorState extends CanvasState {
   showBatchModal: boolean;
   currentProject: Project | null;
   readonly: boolean;
+  librarySearch: string;
+  librarySort: 'updatedAt' | 'createdAt' | 'name';
+  libraryFilterTag: string | null;
+  libraryFilterCategory: string | null;
+  categories: string[];
 
   setActivePanel: (panel: EditorState['activePanel']) => void;
   selectElement: (id: string | null) => void;
@@ -36,10 +41,11 @@ interface EditorState extends CanvasState {
   pushHistory: () => void;
   addBrandColor: (color: Omit<BrandColor, 'id'>) => void;
   removeBrandColor: (id: string) => void;
-  saveToLibrary: (name: string, thumbnail: string) => void;
+  saveToLibrary: (name: string, thumbnail: string, category?: string, tags?: string[]) => void;
+  saveProjectAsNewVersion: (thumbnail?: string) => void;
   loadProject: (projectId: string) => void;
   deleteProject: (projectId: string) => void;
-  createVersion: () => void;
+  createVersion: (thumbnail?: string) => void;
   restoreVersion: (versionIndex: number) => void;
   generateShareLink: () => string;
   loadSharedProject: (token: string) => Project | null;
@@ -47,6 +53,10 @@ interface EditorState extends CanvasState {
   setShowPreviewModal: (show: boolean) => void;
   setShowLibraryModal: (show: boolean) => void;
   setShowBatchModal: (show: boolean) => void;
+  setLibrarySearch: (s: string) => void;
+  setLibrarySort: (s: EditorState['librarySort']) => void;
+  setLibraryFilterTag: (t: string | null) => void;
+  setLibraryFilterCategory: (c: string | null) => void;
 }
 
 interface SavedCanvasState {
@@ -126,8 +136,17 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   showBatchModal: false,
   currentProject: null,
   readonly: false,
+  librarySearch: '',
+  librarySort: 'updatedAt',
+  libraryFilterTag: null,
+  libraryFilterCategory: null,
+  categories: ['专辑封面', '节目卡片', '播客封面', '音乐单曲', '社交媒体', '其他'],
 
   setActivePanel: (panel) => set({ activePanel: panel }),
+  setLibrarySearch: (s) => set({ librarySearch: s }),
+  setLibrarySort: (s) => set({ librarySort: s }),
+  setLibraryFilterTag: (t) => set({ libraryFilterTag: t }),
+  setLibraryFilterCategory: (c) => set({ libraryFilterCategory: c }),
 
   selectElement: (id) => set({ selectedId: id }),
 
@@ -318,7 +337,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     saveBrandColors(colors);
   },
 
-  saveToLibrary: (name, thumbnail) => {
+  saveToLibrary: (name, thumbnail, category, tags) => {
     if (get().readonly) return;
     const { elements, background, canvasSize, zoom, deletedElements, projects, currentProject } = get();
     const state = cloneDeep({ elements, background, canvasSize, zoom, deletedElements, selectedId: null });
@@ -330,19 +349,23 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         ...p,
         name,
         thumbnail,
+        category: category || p.category || '其他',
+        tags: tags || p.tags || [],
         updatedAt: now,
         canvasState: state,
-        versions: [...p.versions, { timestamp: now, state }].slice(-20),
+        versions: [...p.versions, { timestamp: now, state, thumbnail }].slice(-20),
       } : p);
     } else {
       const project: Project = {
         id: generateId(),
         name,
         thumbnail,
+        category: category || '其他',
+        tags: tags || [],
         createdAt: now,
         updatedAt: now,
         canvasState: state,
-        versions: [{ timestamp: now, state }],
+        versions: [{ timestamp: now, state, thumbnail }],
         shareToken: null,
       };
       newProjects = [project, ...projects];
@@ -350,6 +373,24 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     }
 
     set({ projects: newProjects });
+    saveProjects(newProjects);
+  },
+
+  saveProjectAsNewVersion: (thumbnail) => {
+    if (get().readonly) return;
+    const { elements, background, canvasSize, zoom, deletedElements, projects, currentProject } = get();
+    if (!currentProject) return;
+    const state = cloneDeep({ elements, background, canvasSize, zoom, deletedElements, selectedId: null });
+    const now = Date.now();
+    const updatedProject: Project = {
+      ...currentProject,
+      thumbnail: thumbnail || currentProject.thumbnail,
+      updatedAt: now,
+      canvasState: state,
+      versions: [...currentProject.versions, { timestamp: now, state, thumbnail: thumbnail || currentProject.thumbnail }].slice(-20),
+    };
+    const newProjects = projects.map(p => p.id === currentProject.id ? updatedProject : p);
+    set({ projects: newProjects, currentProject: updatedProject });
     saveProjects(newProjects);
   },
 
@@ -367,7 +408,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     saveProjects(newProjects);
   },
 
-  createVersion: () => {
+  createVersion: (thumbnail) => {
     const { elements, background, canvasSize, zoom, deletedElements, currentProject, projects } = get();
     if (!currentProject) return;
     const state = cloneDeep({ elements, background, canvasSize, zoom, deletedElements, selectedId: null });
@@ -375,7 +416,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     const updatedProject: Project = {
       ...currentProject,
       updatedAt: now,
-      versions: [...currentProject.versions, { timestamp: now, state }].slice(-20),
+      versions: [...currentProject.versions, { timestamp: now, state, thumbnail }].slice(-20),
     };
     const newProjects = projects.map(p => p.id === currentProject.id ? updatedProject : p);
     set({ currentProject: updatedProject, projects: newProjects });

@@ -56,7 +56,6 @@ export const PreviewModal: React.FC = () => {
           style={{
             width: `${displayWidth}px`,
             height: `${displayHeight}px`,
-            background: background,
             boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
           }}
         >
@@ -72,6 +71,7 @@ export const PreviewModal: React.FC = () => {
                 position: 'absolute',
                 width: `${canvasSize.width}px`,
                 height: `${canvasSize.height}px`,
+                background: background,
                 transform: `scale(${coverScale})`,
                 transformOrigin: 'top left',
                 left: `${offsetX}px`,
