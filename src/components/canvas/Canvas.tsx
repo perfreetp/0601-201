@@ -180,72 +180,73 @@ export const Canvas: React.FC = () => {
               </div>
             </div>
           ))}
-
-          {selectedElement && (
-            <div
-              style={{
-                position: 'absolute',
-                left: `${selectedElement.x - 4}px`,
-                top: `${selectedElement.y - 4}px`,
-                width: `${selectedElement.width + 8}px`,
-                height: `${selectedElement.height + 8}px`,
-                transform: `rotate(${selectedElement.rotation}deg)`,
-                border: '2px solid #8b5cf6',
-                boxShadow: '0 0 0 1px rgba(139,92,246,0.3)',
-                zIndex: 9999,
-                pointerEvents: 'none',
-              }}
-            >
-              {!selectedElement.locked && Object.entries(handlePositions).map(([pos, style]) => (
-                <div
-                  key={pos}
-                  onMouseDown={(e) => handleMouseDown(e as any, selectedElement, pos as HandleType)}
-                  style={{
-                    position: 'absolute',
-                    width: '12px',
-                    height: '12px',
-                    background: '#8b5cf6',
-                    border: '2px solid #0a0a0f',
-                    borderRadius: '3px',
-                    transform: 'translate(-50%, -50%)',
-                    ...style,
-                    pointerEvents: 'auto',
-                  } as React.CSSProperties}
-                />
-              ))}
-              {!selectedElement.locked && (
-                <div
-                  onMouseDown={(e) => handleMouseDown(e as any, selectedElement, 'rotate')}
-                  style={{
-                    position: 'absolute',
-                    top: '-30px',
-                    left: '50%',
-                    width: '2px',
-                    height: '20px',
-                    background: '#8b5cf6',
-                    transform: 'translateX(-50%)',
-                    pointerEvents: 'auto',
-                    cursor: 'grab',
-                  }}
-                >
-                  <div
-                    style={{
-                      width: '14px',
-                      height: '14px',
-                      borderRadius: '50%',
-                      background: '#8b5cf6',
-                      position: 'absolute',
-                      top: '-8px',
-                      left: '50%',
-                      transform: 'translateX(-50%)',
-                      border: '2px solid #0a0a0f',
-                    }}
-                  />
-                </div>
-              )}
-            </div>
-          )}
         </div>
+
+        {selectedElement && !readonly && (
+          <div
+            style={{
+              position: 'absolute',
+              left: `${(selectedElement.x - 4) * zoom}px`,
+              top: `${(selectedElement.y - 4) * zoom}px`,
+              width: `${(selectedElement.width + 8) * zoom}px`,
+              height: `${(selectedElement.height + 8) * zoom}px`,
+              transform: `rotate(${selectedElement.rotation}deg)`,
+              transformOrigin: `${(selectedElement.width + 8) / 2 * zoom}px ${(selectedElement.height + 8) / 2 * zoom}px`,
+              border: `${2 * zoom}px solid #8b5cf6`,
+              boxShadow: `0 0 0 ${1 * zoom}px rgba(139,92,246,0.3)`,
+              zIndex: 9999,
+              pointerEvents: 'none',
+            }}
+          >
+            {!selectedElement.locked && Object.entries(handlePositions).map(([pos, style]) => (
+              <div
+                key={pos}
+                onMouseDown={(e) => handleMouseDown(e as any, selectedElement, pos as HandleType)}
+                style={{
+                  position: 'absolute',
+                  width: `${12 * zoom}px`,
+                  height: `${12 * zoom}px`,
+                  background: '#8b5cf6',
+                  border: `${2 * zoom}px solid #0a0a0f`,
+                  borderRadius: `${3 * zoom}px`,
+                  transform: 'translate(-50%, -50%)',
+                  ...style,
+                  pointerEvents: 'auto',
+                } as React.CSSProperties}
+              />
+            ))}
+            {!selectedElement.locked && (
+              <div
+                onMouseDown={(e) => handleMouseDown(e as any, selectedElement, 'rotate')}
+                style={{
+                  position: 'absolute',
+                  top: `${-30 * zoom}px`,
+                  left: '50%',
+                  width: `${2 * zoom}px`,
+                  height: `${20 * zoom}px`,
+                  background: '#8b5cf6',
+                  transform: 'translateX(-50%)',
+                  pointerEvents: 'auto',
+                  cursor: 'grab',
+                }}
+              >
+                <div
+                  style={{
+                    width: `${14 * zoom}px`,
+                    height: `${14 * zoom}px`,
+                    borderRadius: '50%',
+                    background: '#8b5cf6',
+                    position: 'absolute',
+                    top: `${-8 * zoom}px`,
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                    border: `${2 * zoom}px solid #0a0a0f`,
+                  }}
+                />
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

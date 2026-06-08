@@ -142,3 +142,29 @@ export const loadHistoryStates = (): any[] => {
     return [];
   }
 };
+
+export const encodeShareData = (data: {
+  elements: CanvasElement[];
+  background: string;
+  canvasSize: { width: number; height: number; name: string; aspect: string };
+}): string => {
+  try {
+    const json = JSON.stringify(data);
+    return btoa(unescape(encodeURIComponent(json)));
+  } catch {
+    return '';
+  }
+};
+
+export const decodeShareData = (token: string): {
+  elements: CanvasElement[];
+  background: string;
+  canvasSize: { width: number; height: number; name: string; aspect: string };
+} | null => {
+  try {
+    const json = decodeURIComponent(escape(atob(token)));
+    return JSON.parse(json);
+  } catch {
+    return null;
+  }
+};

@@ -22,22 +22,27 @@ export const PreviewModal: React.FC = () => {
   const scale = 0.15;
 
   const renderPlatformPreview = (platform: typeof platforms[0]) => {
-    const [pw, ph] = platform.aspect.split(':').map(Number);
-    const platformRatio = pw / ph;
-    const canvasRatio = canvasSize.width / canvasSize.height;
+    const displayWidth = platform.width / 2;
+    const displayHeight = platform.height / 2;
 
-    let scaleX = 1, scaleY = 1, offsetX = 0, offsetY = 0;
-    if (canvasRatio > platformRatio) {
-      scaleY = 1;
-      scaleX = canvasRatio / platformRatio;
-      offsetX = -(scaleX - 1) / 2 * platform.width;
+    const canvasRatio = canvasSize.width / canvasSize.height;
+    const targetRatio = platform.width / platform.height;
+
+    let coverScale: number;
+    let offsetX = 0;
+    let offsetY = 0;
+
+    if (canvasRatio > targetRatio) {
+      coverScale = displayHeight / canvasSize.height;
+      const scaledCanvasWidth = canvasSize.width * coverScale;
+      offsetX = -(scaledCanvasWidth - displayWidth) / 2;
     } else {
-      scaleX = 1;
-      scaleY = platformRatio / canvasRatio;
-      offsetY = -(scaleY - 1) / 2 * platform.height;
+      coverScale = displayWidth / canvasSize.width;
+      const scaledCanvasHeight = canvasSize.height * coverScale;
+      offsetY = -(scaledCanvasHeight - displayHeight) / 2;
     }
 
-    const safeMargin = Math.min(platform.width, platform.height) * 0.08;
+    const safeMargin = Math.min(displayWidth, displayHeight) * 0.08;
 
     return (
       <div key={platform.name} className="p-3 rounded-xl bg-white/5 border border-white/10">
@@ -49,8 +54,8 @@ export const PreviewModal: React.FC = () => {
         <div
           className="relative mx-auto rounded-lg overflow-hidden"
           style={{
-            width: `${platform.width / 2}px`,
-            height: `${platform.height / 2}px`,
+            width: `${displayWidth}px`,
+            height: `${displayHeight}px`,
             background: background,
             boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
           }}
@@ -67,10 +72,10 @@ export const PreviewModal: React.FC = () => {
                 position: 'absolute',
                 width: `${canvasSize.width}px`,
                 height: `${canvasSize.height}px`,
-                transform: `scale(${Math.min(platform.width, platform.height) / Math.min(canvasSize.width, canvasSize.height) * scaleX / 2}, ${Math.min(platform.width, platform.height) / Math.min(canvasSize.width, canvasSize.height) * scaleY / 2})`,
+                transform: `scale(${coverScale})`,
                 transformOrigin: 'top left',
-                left: `${offsetX / 2 + (platform.width / 2 - canvasSize.width * Math.min(platform.width, platform.height) / Math.min(canvasSize.width, canvasSize.height) / 2 * scaleX) / 2}px`,
-                top: `${offsetY / 2 + (platform.height / 2 - canvasSize.height * Math.min(platform.width, platform.height) / Math.min(canvasSize.width, canvasSize.height) / 2 * scaleY) / 2}px`,
+                left: `${offsetX}px`,
+                top: `${offsetY}px`,
               }}
             >
               {elements.map(el => <CanvasElementRenderer key={el.id} element={el} />)}
@@ -79,8 +84,8 @@ export const PreviewModal: React.FC = () => {
           <div
             style={{
               position: 'absolute',
-              inset: `${safeMargin / 2}px`,
-              border: '1px dashed rgba(255, 255, 255, 0.3)',
+              inset: `${safeMargin}px`,
+              border: '1px dashed rgba(255, 255, 255, 0.35)',
               borderRadius: '6px',
               pointerEvents: 'none',
             }}
@@ -91,7 +96,7 @@ export const PreviewModal: React.FC = () => {
               bottom: '4px',
               right: '6px',
               fontSize: '8px',
-              color: 'rgba(255, 255, 255, 0.5)',
+              color: 'rgba(255, 255, 255, 0.6)',
               fontFamily: 'monospace',
             }}
           >
@@ -139,7 +144,7 @@ export const PreviewModal: React.FC = () => {
               </div>
             </div>
           </div>
-          <p className="text-xs text-white/60 mb-3">各平台裁切效果预览（虚线框为安全区）</p>
+          <p className="text-xs text-white/60 mb-3">各平台裁切效果预览（虚线框为安全区，按真实比例裁切）</p>
           <div className="grid grid-cols-4 gap-3">
             {platforms.map(p => renderPlatformPreview(p))}
           </div>

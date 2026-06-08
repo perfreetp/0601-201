@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import type { CanvasElement, CanvasState, CanvasSize, Project, BrandColor } from '../types';
 import { CANVAS_SIZES, TEMPLATES } from '../data/templates';
-import { generateId, cloneDeep, saveProjects, loadProjects, saveBrandColors, loadBrandColors } from '../utils';
+import { generateId, cloneDeep, saveProjects, loadProjects, saveBrandColors, loadBrandColors, encodeShareData, decodeShareData } from '../utils';
 
 interface EditorState extends CanvasState {
   projects: Project[];
@@ -391,24 +391,41 @@ export const useEditorStore = create<EditorState>((set, get) => ({
 
   generateShareLink: () => {
     if (get().readonly) return '';
-    const { currentProject, projects } = get();
-    if (!currentProject) return '';
-    const token = Math.random().toString(36).slice(2, 15);
-    const updated: Project = { ...currentProject, shareToken: token };
-    const newProjects = projects.map(p => p.id === currentProject.id ? updated : p);
-    set({ currentProject: updated, projects: newProjects });
-    saveProjects(newProjects);
+    const { elements, background, canvasSize, currentProject, projects } = get();
+    const token = encodeShareData({ elements, background, canvasSize });
+    if (!token) return '';
+
+    if (currentProject) {
+      const updated: Project = { ...currentProject, shareToken: token };
+      const newProjects = projects.map(p => p.id === currentProject.id ? updated : p);
+      set({ currentProject: updated, projects: newProjects });
+      saveProjects(newProjects);
+    }
     return `${window.location.origin}/share/${token}`;
   },
 
   loadSharedProject: (token) => {
+    const decoded = decodeShareData(token);
+    if (decoded && decoded.elements && decoded.background && decoded.canvasSize) {
+      const { elements, background, canvasSize } = decoded;
+      set({
+        elements: cloneDeep(elements),
+        background,
+        canvasSize,
+        selectedId: null,
+        readonly: true,
+        deletedElements: [],
+      });
+      return { id: 'shared', name: '分享作品' } as Project;
+    }
     const { projects } = get();
     const project = projects.find(p => p.shareToken === token);
     if (project) {
       const state = cloneDeep(project.canvasState);
       set({ ...state, currentProject: project, selectedId: null, readonly: true });
+      return project;
     }
-    return project || null;
+    return null;
   },
 
   setBatchTitles: (titles) => set({ batchTitles: titles }),
